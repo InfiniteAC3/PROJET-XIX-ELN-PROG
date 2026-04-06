@@ -21,15 +21,33 @@
 //leds
 LedControl lc = LedControl(DIN_PIN, CLK_PIN, LOAD_PIN, NB_AFFICH);
 
-// variables affichage de temps
+// --- VARIABLES TEMPS (CORRIGÉES) ---
+unsigned long temps_derniere_action = 0; 
+unsigned long maintenant = 0;
+
+// --- TABLEAU D'OBJETS JOUEURS ---
+
 int TEMPS_QUESTION = 15; 
 int tempsQuestion = TEMPS_QUESTION;
-int temps_derniere_action = 0;
+
+
+//VARIABLES joueurs
+typedef struct  {
+  String nom;          // Nom du joueur (ex: "J1")
+  int nbOK;            // Réponses justes
+  int nbNOK;           // Réponses fausses
+  int nbZero;          // Réponses nulles (ou non répondues)
+  long score;          // Score total
+}Joueur;
+int nJoueurs = 4;
+Joueur joueurs[4];
+
 // ============================================================
 //  PROTOTYPES DES FONCTIONS (MODULARITÉ)
 // ============================================================
 void initialiserAffichage();
 void configurerComposants();
+void configurerPartie();
 void afficherChaine(const char* texte);
 void effacerEcran();
 byte charTo7Seg(char c);
@@ -37,24 +55,32 @@ String obtenirTempsString();
 
 void afficherTemps();
 
-void aBuzze();
+void aBuzze(int j);
 void tempsEcoule();
 void verifierReponse();
+void initialiserDonneesJoueurs() {
+  for (int i = 0; i < 4; i++) {
+    joueurs[i].nom = "J" + String(i + 1);
+    joueurs[i].nbOK = 0;
+    joueurs[i].nbNOK = 0;
+    joueurs[i].nbZero = 0;
+    joueurs[i].score = 0;
+  }
+}
 // ============================================================
 //  FONCTION PRINCIPALE : SETUP
 // ============================================================
 void setup() {
   configurerComposants();
   initialiserAffichage();
-
+  
   // Test de la modularité
-  afficherChaine("HELLO");
+  afficherChaine("STIC 24");
   delay(1500);
   effacerEcran();
-  afficherChaine("JEU STIC");  // Message de ton schéma
+  afficherChaine("JEU QUI2");  // Message de ton schéma
   delay(1500);
-  afficherChaine("temps");
-  delay(2000);
+  configurerPartie();
   effacerEcran();
   temps_derniere_action = millis();
 }
@@ -100,6 +126,8 @@ byte charTo7Seg(char c) {
     // caractères vraiment spéciaux
     case 'M': return 0x76;
     case 'N': return 0x25;
+    case 'Q': return 0x73;
+    case 'Y': return 0x3B;
     // Chiffres
     case '0': return 0x7E;
     case '1': return 0x30;
@@ -194,39 +222,101 @@ void afficherTemps() {
   // Ici, il n'y a PAS de delay. 
   // L'Arduino sort de la fonction instantanément si les 500ms ne sont pas passées.
 
-void aBuzze() {
-  afficherChaine("bu22");
-  delay(1000);
+void aBuzze(int j) {
+  String af = "BU22 " + joueurs[j].nom;
+  afficherChaine(af.c_str());delay(200);
+  analogWrite(HP,200);
+  delay(100);
+  analogWrite(HP,0);
   temps_derniere_action = millis();
 }
 void tempsEcoule() {
-  afficherChaine("ecoule ");
+  afficherChaine("ecoule");
   delay(1000);
   temps_derniere_action = millis();
 }
+void validerReponse(int id) {
+  bool attenteArbitre = true;
+  afficherChaine("JUSTE ?"); // On demande à l'arbitre de trancher
 
-void verifierReponse(){
-  if (!digitalRead(BJ1))
-  {
-    aBuzze();
-
+  while (attenteArbitre) {
+    // Si l'arbitre valide (Bouton ROK)
+    if (digitalRead(ROK) == LOW) {
+      joueurs[id].nbOK++;
+      joueurs[id].score += 10;
+      afficherChaine("CORRECT");
+      digitalWrite(ANO,HIGH);
+      digitalWrite(CAT,LOW);
+      attenteArbitre = false;
+      delay(1000);
+    } 
+    // Si l'arbitre refuse (Bouton RNOK)
+    else if (digitalRead(RNOK) == LOW) {
+      joueurs[id].nbNOK++;
+      joueurs[id].score -= 5;
+      afficherChaine("DOMMAGE");
+      digitalWrite(ANO,LOW);
+      digitalWrite(CAT,HIGH);
+      attenteArbitre = false;
+      delay(1000);
+    }
+    digitalWrite(ANO,LOW);
+    digitalWrite(CAT,LOW);
   }
-  else if(tempsQuestion <=0 )
-  {
-    tempsEcoule();
-  }
-  
+  temps_derniere_action = millis(); // On relance le chrono pour la suite
 }
-void configurerComposants(){
-  int inputPins[8] = {12,7,8,9,0,1,2,3};
-  int outputPins[3] = {4,5,6};
+void verifierReponse() {
+  int pinsBuzzers[] = {BJ1, BJ2, BJ3, BJ4};
 
-  for (int i = 0; i < 8 ; i++)
-  {
-    pinMode(inputPins[i], INPUT);
+  // On scanne uniquement le nombre de joueurs configurés
+  for (int i = 0; i < nJoueurs; i++) {
+    if (digitalRead(pinsBuzzers[i]) == LOW) {
+      aBuzze(i);           // Son + Message "BUZZ"
+      validerReponse(i);  // Mise à jour de l'objet joueur[i]
+      return; 
+    }
   }
-   for (int i = 0; i < 3 ; i++)
-  {
-    pinMode(outputPins[i], OUTPUT);
+
+  // Si le temps est mort
+  if (tempsQuestion <= 0) {
+    tempsEcoule();
+    // On pourrait pénaliser tout le monde ici (nbZero++)
+    for(int i=0; i<nJoueurs; i++) joueurs[i].nbZero++;
   }
+}
+  
+
+void configurerComposants() {
+  // Tous les boutons en entrées avec résistance interne
+  int inputPins[] = {BJ1, BJ2, BJ3, BJ4, ROK, RNOK, MODE, R0};
+  for (int i = 0; i < 8; i++) {
+    pinMode(inputPins[i], INPUT_PULLUP);
+  }
+
+  pinMode(HP, OUTPUT);
+  pinMode(ANO, OUTPUT);
+  pinMode(CAT, OUTPUT);
+}
+  
+
+void configurerPartie()
+{
+  while(digitalRead(ROK)){
+   String af = "NOMBRE "+ String(nJoueurs);
+  afficherChaine(af.c_str());
+
+    
+    if (!digitalRead(MODE))
+    {
+      delay(200);
+      nJoueurs --;
+      if (nJoueurs <1) nJoueurs = 4; 
+    }
+    else if (!digitalRead(R0))
+    {
+      delay(200);
+      nJoueurs ++;
+      if (nJoueurs >4) nJoueurs = 1; 
+    }
+}
 }
