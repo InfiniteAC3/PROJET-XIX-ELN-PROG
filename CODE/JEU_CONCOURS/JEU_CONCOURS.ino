@@ -1,6 +1,8 @@
 #include <LedControl.h>
 
-// Configuration pour tes broches exactes
+// ============================================================
+//  CONFIGURATION MATÉRIELLE (HARDWARE CONFIG)
+// ============================================================
 #define DIN_PIN   11 
 #define CLK_PIN   13 
 #define LOAD_PIN  10  
@@ -8,29 +10,100 @@
 
 LedControl lc = LedControl(DIN_PIN, CLK_PIN, LOAD_PIN, NB_AFFICH);
 
-void setup() {
-  // 1. Sortir du mode veille (Crucial !)
-  lc.shutdown(0, false);
-  
-  // 2. Désactiver le mode Test (Celui qui allume tout à 8888)
-  // La bibliothèque le fait normalement, mais on assure.
-  
-  // 3. Luminosité
-  lc.setIntensity(0, 8);
-  
-  // 4. Nettoyer
-  lc.clearDisplay(0);
+// ============================================================
+//  PROTOTYPES DES FONCTIONS (MODULARITÉ)
+// ============================================================
+void initialiserAffichage();
+void afficherChaine(const char* texte);
+void effacerEcran();
+byte charTo7Seg(char c);
 
-  // 5. Affichage direct (Sans décodage BCD)
-  // 'H' 'E' 'L' 'L' 'O'
- // On inverse les positions pour remettre "HELLO" à l'endroit
-  lc.setRow(0, 0, 0x37); // H était en 7, on le met en 0
-  lc.setRow(0, 1, 0x4F); // E était en 6, on le met en 1
-  lc.setRow(0, 2, 0x0E); // L était en 5, on le met en 2
-  lc.setRow(0, 3, 0x0E); // L était en 4, on le met en 3
-  lc.setRow(0, 4, 0x7E); // O était en 3, on le met en 4
+// ============================================================
+//  FONCTION PRINCIPALE : SETUP
+// ============================================================
+void setup() {
+  initialiserAffichage();
+  
+  // Test de la modularité
+  afficherChaine("HELLO");
+  delay(1500);
+  
+  afficherChaine("JEU STIC"); // Message de ton schéma
+  delay(1500);
+  
+  effacerEcran();
 }
 
+// ============================================================
+//  FONCTION PRINCIPALE : LOOP
+// ============================================================
 void loop() {
-  // On ne fait rien, on attend de voir le HELLO
+  // Le loop reste vide pour l'instant, prêt pour la logique de jeu
+  afficherChaine("bonjour"); 
+}
+
+// ============================================================
+//  COUCHE 1 : GESTION BAS NIVEAU (SEGMENTS)
+// ============================================================
+
+/**
+ * Convertit un caractère ASCII en code 7-segments.
+ * Facile à mettre à jour si tu veux ajouter des symboles.
+ */
+byte charTo7Seg(char c) {
+  switch (toupper(c)) {
+    // Lettres
+    case 'A': return 0x77; case 'B': return 0x1F; case 'C': return 0x4E;
+    case 'D': return 0x3D; case 'E': return 0x4F; case 'F': return 0x47;
+    case 'G': return 0x5E; case 'H': return 0x37; case 'I': return 0x30;
+    case 'J': return 0x3C; case 'L': return 0x0E; case 'O': return 0x7E;
+    case 'P': return 0x67; case 'R': return 0x05; case 'S': return 0x5B;
+    case 'T': return 0x0F; case 'U': return 0x3E; 
+    // caractères vraiment spéciaux
+    case 'M': return 0x76; case 'N': return 0x25;
+    // Chiffres
+    case '0': return 0x7E; case '1': return 0x30; case '2': return 0x6D;
+    case '3': return 0x79; case '4': return 0x33; case '5': return 0x5B;
+    case '6': return 0x5F; case '7': return 0x70; case '8': return 0x7F;
+    case '9': return 0x7B;
+    // Symboles
+    case '-': return 0x01; case '?': return 0x6B; case '_': return 0x08;
+    case ' ': return 0x00;
+    default:  return 0x00; // Caractère inconnu = éteint
+  }
+}
+
+// ============================================================
+//  COUCHE 2 : INTERFACE D'AFFICHAGE (LOGIC)
+// ============================================================
+
+/**
+ * Configure le MAX7219 au démarrage.
+ */
+void initialiserAffichage() {
+  lc.shutdown(0, false);      // Réveil
+  lc.setIntensity(0, 8);      // Luminosité moyenne
+  lc.clearDisplay(0);         // Nettoyage
+}
+
+/**
+ * Affiche une chaîne de caractères (max 8) de gauche à droite.
+ * Gère l'inversion observée sur ton Proteus.
+ */
+void afficherChaine(const char* texte) {
+  effacerEcran();
+  int n = strlen(texte);
+  
+  for (int i = 0; i < n && i < 8; i++) {
+    // On utilise l'index 'i' car ton afficheur Proteus 
+    // semble mapper DIG0 à la position la plus à gauche.
+    lc.setRow(0, i, charTo7Seg(texte[i]));
+  }
+}
+
+/**
+ * Éteint tous les segments de l'afficheur.
+ */
+void effacerEcran() {
+  lc.clearDisplay(0);
 }
