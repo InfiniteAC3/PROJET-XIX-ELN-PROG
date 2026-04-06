@@ -227,9 +227,9 @@ void setup() {
   initJ();
 
   // ── Écran de bienvenue ─────────────────────────────────────────
-  aff("  QPC   "); delay(900);
-  aff("CHAMPION"); delay(1200);
-  aff(" BIENVN "); delay(800);
+  aff("STIC24"); delay(900);
+  aff("QUI2"); delay(1200);
+  aff(" CONFIG "); delay(800);
   clr(); delay(300);
 }
 
@@ -482,8 +482,8 @@ void loop() {
  *
  *  Écran          │ Affichage    │ Description
  * ────────────────┼──────────────┼─────────────────────────────────
- *  Accueil        │ "  QPC   "   │ Splash screen
- *                 │ "CHAMPION"   │
+ *  Accueil        │ "STIC24"   │ Splash screen
+ *                 │ "QUIZ"   │
  *  Cfg joueurs    │ "JOUEUR 4"   │ Nb joueurs sélectionné
  *  Cfg question   │ "TEMPS 15"   │ Temps de question (ex. 15 s)
  *                 │ "OK    10"   │ Points bonne réponse
