@@ -97,11 +97,12 @@ byte seg7(char c) {
     case 'G': return 0x5E;  case 'H': return 0x37;
     case 'I': return 0x30;  case 'J': return 0x3C;
     case 'K': return 0x37;  case 'L': return 0x0E;
-    case 'M': return 0x76;  case 'N': return 0x25;
+    case 'M': return 0x76;  case 'N': return 0x17;//00010101 0x15 ou 0x17 (n) ou 0x25 (N)
     case 'O': return 0x7E;  case 'P': return 0x67;
     case 'Q': return 0x73;  case 'R': return 0x05;
     case 'S': return 0x5B;  case 'T': return 0x0F;
     case 'U': return 0x3E;  case 'Y': return 0x3B;
+    case 'Z': return 0x6D;
     // ── Chiffres ──
     case '0': return 0x7E;  case '1': return 0x30;
     case '2': return 0x6D;  case '3': return 0x79;
@@ -227,8 +228,8 @@ void setup() {
   initJ();
 
   // ── Écran de bienvenue ─────────────────────────────────────────
-  aff("STIC24"); delay(900);
-  aff("QUI2"); delay(1200);
+  aff(" STIC24 "); delay(900);
+  aff("  QUIZ  "); delay(1200);
   aff(" CONFIG "); delay(800);
   clr(); delay(300);
 }
